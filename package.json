@@ -32,7 +32,6 @@
     "lint": "eslint . && prettier -c .",
     "prepare": "husky install",
     "prepublishOnly": "pnpm build",
-    "postinstall": "tsup src/index.ts --format=cjs,esm --dts",
     "test": "jest",
     "typecheck": "tsc"
   },
