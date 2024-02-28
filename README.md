@@ -1,5 +1,7 @@
 # @prisma/extension-read-replicas
 
+> **In This fork, the extension accept reader instance instead of initiating one**  
+
 This [Prisma Client Extension](https://www.prisma.io/docs/concepts/components/prisma-client/client-extensions) adds read replica support to your Prisma Client. Under the hood, this extension creates additional Prisma Clients for the read replica database connection strings, and then routes read queries to these Clients instead of using the primary Prisma Client.
 
 ## Requirements
