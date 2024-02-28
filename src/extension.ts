@@ -1,10 +1,6 @@
 import { Prisma } from '@prisma/client/extension.js'
 
-import { ConfigureReplicaCallback, ReplicaManager } from './ReplicaManager'
-
-export type ReplicasOptions = {
-  url: string | string[]
-}
+import { PrismaClient } from '@prisma/client'
 
 const readOperations = [
   'findFirst',
@@ -19,28 +15,8 @@ const readOperations = [
   'aggregateRaw',
 ]
 
-export const readReplicas = (options: ReplicasOptions, configureReplicaClient?: ConfigureReplicaCallback) =>
+export const readReplicas = (replica: PrismaClient) =>
   Prisma.defineExtension((client) => {
-    const PrismaClient = Object.getPrototypeOf(client).constructor
-    const datasourceName = Object.keys(options).find((key) => !key.startsWith('$'))
-    if (!datasourceName) {
-      throw new Error(`Read replicas options must specify a datasource`)
-    }
-    let replicaUrls = options.url
-    if (typeof replicaUrls === 'string') {
-      replicaUrls = [replicaUrls]
-    } else if (!Array.isArray(replicaUrls)) {
-      throw new Error(`Replica URLs must be a string or list of strings`)
-    } else if (replicaUrls.length === 0) {
-      throw new Error(`At least one replica URL must be specified`)
-    }
-
-    const replicaManager = new ReplicaManager({
-      replicaUrls,
-      clientConstructor: PrismaClient,
-      configureCallback: configureReplicaClient,
-    })
-
     return client.$extends({
       client: {
         $primary<T extends object>(this: T): Omit<T, '$primary' | '$replica'> {
@@ -62,15 +38,7 @@ export const readReplicas = (options: ReplicasOptions, configureReplicaClient?: 
             throw new Error(`Cannot use $replica inside of a transaction`)
           }
 
-          return replicaManager.pickReplica() as unknown as Omit<T, '$primary' | '$replica'>
-        },
-
-        async $connect() {
-          await Promise.all([(client as any).$connect(), replicaManager.connectAll()])
-        },
-
-        async $disconnect() {
-          await Promise.all([(client as any).$disconnect(), replicaManager.disconnectAll()])
+          return replica as unknown as Omit<T, '$primary' | '$replica'>
         },
       },
 
@@ -87,7 +55,6 @@ export const readReplicas = (options: ReplicasOptions, configureReplicaClient?: 
             return query(args)
           }
           if (readOperations.includes(operation)) {
-            const replica = replicaManager.pickReplica()
             if (model) {
               return replica[model][operation](args)
             }
